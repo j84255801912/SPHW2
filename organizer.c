@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Please give numeric argument for judge_num\n");
         exit(EXIT_FAILURE);
     } else if (judge_num < MIN_JUDGE_NUM || judge_num > MAX_JUDGE_NUM) {
-        fprintf(stderr, "Please enter judge_num : %d <= judge_num <= %d", MIN_JUDGE_NUM, MAX_JUDGE_NUM);
+        fprintf(stderr, "Please enter judge_num : %d <= judge_num <= %d\n", MIN_JUDGE_NUM, MAX_JUDGE_NUM);
         exit(EXIT_FAILURE);
     }
 
@@ -43,7 +43,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Please give numeric argument for player_num\n");
         exit(EXIT_FAILURE);
     } else if (player_num < MIN_PLAYER_NUM || player_num > MAX_PLAYER_NUM) {
-        fprintf(stderr, "Please enter player_num : %d <= player_num <= %d", MIN_PLAYER_NUM, MAX_JUDGE_NUM);
+        fprintf(stderr, "Please enter player_num : %d <= player_num <= %d\n", MIN_PLAYER_NUM, MAX_JUDGE_NUM);
         exit(EXIT_FAILURE);
     }
 
