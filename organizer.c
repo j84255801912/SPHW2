@@ -12,6 +12,7 @@
 
 typedef struct judge {
     int judge_id;
+    // 0 for read, 1 for write
     int pipe_to_judge_fd[2];
     int pipe_from_judge_fd[2];
     pid_t pid;
