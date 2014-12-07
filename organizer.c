@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
+#include <sys/wait.h>
 
 #define MIN_JUDGE_NUM 1
 #define MAX_JUDGE_NUM 12
@@ -17,6 +18,10 @@ typedef struct judge {
     int pipe_from_judge_fd[2];
     pid_t pid;
 } JUDGE;
+
+typedef struct player {
+    int score;
+} PLAYER;
 
 int main(int argc, char *argv[])
 {
@@ -52,6 +57,8 @@ int main(int argc, char *argv[])
     int i, j;
     char buffer[MAX_BUFFER_SIZE];
     JUDGE judges[MAX_JUDGE_NUM];
+    PLAYER players[MAX_PLAYER_NUM];
+
     for (i = 0; i < judge_num; i++) {
         judges[i].judge_id = i + 1;
         // create two-direction pipe first.
@@ -69,15 +76,43 @@ int main(int argc, char *argv[])
             perror("fork");
             exit(EXIT_FAILURE);
         } else if (cpid == 0) { // child
-            //execl("./judge", "./judge", judges[i].judge_id, (char *)0);
-            sprintf(buffer, "%d", judges[i].judge_id);
+            /* GOAL : make judge's stdin & stdout are from/to organizer */
+            /* handle to_judge first */
+            // close read end
+            close(judges[i].pipe_to_judge_fd[1]);
+            dup2(judges[i].pipe_to_judge_fd[0], STDIN_FILENO);
+            close(judges[i].pipe_to_judge_fd[0]);
+
+            /* handle from_judge */
+            // close write end of org to listen from judge
+            close(judges[i].pipe_from_judge_fd[0]);
+            dup2(judges[i].pipe_from_judge_fd[1], STDOUT_FILENO);
+            close(judges[i].pipe_from_judge_fd[1]);
+
+            /* call judge */
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "%d", i + 1);
+            // use (char *)0 instead of NULL,
+            // due to the fact that in some system NULL is not equal to 0.
             execl("./judge", "./judge", buffer, (char *)0);
+
+            /* should never run to here */
             perror("execl");
             _exit(EXIT_FAILURE);
         } else {
             judges[i].pid = cpid;
+            // close read end cuz dont need it.
+            close(judges[i].pipe_to_judge_fd[0]);
+            // write
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "%d %d %d %d\n", i*4, i*4 + 1, i*4 + 2, i*4 + 3);
+            write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
         }
     }
-    printf("%d %d\n", judge_num, player_num);
-    exit(EXIT_SUCCESS);
+    for (i = 0; i < judge_num; i++) {
+        int stauts;
+        wait(&stauts);
+    }
+
+    return EXIT_SUCCESS;
 }
