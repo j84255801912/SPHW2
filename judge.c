@@ -3,6 +3,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #define MAX_BUF_SIZE (1000)
 #define TERMINATE "0 0 0 0\n"
@@ -13,7 +15,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
     char *temp, buffer[MAX_BUF_SIZE];
-    unsigned int judge_num = strtol(argv[1], &temp, 10);
+    unsigned int judge_id = strtol(argv[1], &temp, 10);
     if (*temp != '\0') {
         fprintf(stderr, "[ERROR] judge : Wrong argus type");
         exit(EXIT_FAILURE);
@@ -57,11 +59,16 @@ int main(int argc, char *argv[]) {
                 cards[the_card] = 1;
                 player_cards[i][j] = the_card;
             }
-        fprintf(stderr, "judge %d : ", judge_num);
+        fprintf(stderr, "judge %d : ", judge_id);
         for (i = 0; i < 14; i++) {
             fprintf(stderr, "%d ", player_cards[0][i]);
         }
         fprintf(stderr, "\n");
+
+        /* make fifo */
+        bzero(buffer, sizeof(buffer));
+        sprintf(buffer, "judge%d.FIFO", judge_id);
+        mkfifo(buffer, 0644);
     }
     exit(EXIT_SUCCESS);
 }
