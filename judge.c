@@ -43,7 +43,7 @@ int main(int argc, char *argv[]) {
         if (strcmp(TERMINATE, buffer) == 0)
             break;
 
-        /* fetch player_num */
+        /* fetch player_id */
         int players[4];
         // trim '\n'
         buffer[strlen(buffer) - 1] = '\0';
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
         ptr = strtok(NULL, " ");
         players[3] = atoi(ptr);
 
-        /* give cards */
+        /* give out cards */
         int cards[52] = {0}, player_cards[4][14];
         // distribute the joker
         player_cards[A][13] = 52;
@@ -75,7 +75,9 @@ int main(int argc, char *argv[]) {
         bzero(buffer, sizeof(buffer));
         sprintf(buffer, "judge%d.FIFO", judge_id);
         mkfifo(buffer, 0644);
+        int fd[4];
 
+        /* intialize players */
         for (i = 0; i < 4; i++) {
             // make fifo to write from player to judge
             char fifoname[MAX_BUFFER_SIZE];
@@ -120,15 +122,19 @@ int main(int argc, char *argv[]) {
                 }
                 buffer[strlen(buffer) - 1] = '\n';
 
-                int fd1 = open(fifoname, O_WRONLY);
-                if (fd1 == -1) {
+                fd[i] = open(fifoname, O_WRONLY);
+                if (fd[i] == -1) {
                     perror("open");
                     exit(EXIT_SUCCESS);
                 }
-                write(fd1, buffer, sizeof(buffer));
-                close(fd1);
-            }
+                write(fd[i], buffer, sizeof(buffer));
+            } // else
+        } // for (i = 0 to 3)
+
+        int card_counts[4] = {14, 13, 13, 13};
+        while (1) {
+
         }
-    }
+    } // while (1)
     return EXIT_SUCCESS;
 }
