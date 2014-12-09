@@ -107,11 +107,17 @@ int main(int argc, char *argv[])
             bzero(buffer, sizeof(buffer));
             sprintf(buffer, "%d %d %d %d\n", i*4, i*4 + 1, i*4 + 2, i*4 + 3);
             write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+            /*
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "0 0 0 0\n");
+            write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+            */
         }
     }
     for (i = 0; i < judge_num; i++) {
-        int stauts;
-        wait(&stauts);
+        int status;
+        wait(&status);
+        printf("%d\n", status);
     }
 
     return EXIT_SUCCESS;
