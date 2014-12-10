@@ -134,7 +134,6 @@ int main(int argc, char *argv[]) {
             } // else
         } // for (i = 0 to 3)
 
-        int card_counts[4];
         int fd_from_players;
         bzero(buffer, sizeof(buffer));
         sprintf(buffer, "judge%d.FIFO", judge_id);
@@ -161,6 +160,7 @@ int main(int argc, char *argv[]) {
         int turn = A;
         int next_turn = (A + 1 ) % 4;
         while (1) {
+            fprintf(stderr, "haha");
             // stop the game when only one player have cards
             int flag = 0;
             for (i = 0; i < 4; i++)
@@ -176,6 +176,7 @@ int main(int argc, char *argv[]) {
             bzero(buffer, sizeof(buffer));
             // [player_index] [random_key] [card_ID]
             read(fd_from_players, buffer, sizeof(buffer));
+            buffer[strlen(buffer) - 1] = '\0';
             ptr = strtok(buffer, " ");
             char player_index = ptr[0];
             ptr = strtok(NULL, " ");
@@ -184,7 +185,40 @@ int main(int argc, char *argv[]) {
             int card_id = atoi(ptr);
             if (rand_key != random_key[player_index - 'A'])
                 fprintf(stderr, "someone is cheating!\n");
-        }
+            // send to next_player which card is to be drawn
+            bzero(buffer, sizeof(buffer));
+            // ????? not sure
+            sprintf(buffer, "> %d\n", card_id);
+            write(fd[next_turn], buffer, sizeof(buffer));
+            // read from next_player his drawn card.
+            bzero(buffer, sizeof(buffer));
+            read(fd_from_players, buffer, sizeof(buffer));
+            buffer[strlen(buffer) - 1] = '\0';
+            // [player_index] [random_key] [the_card_number]
+            ptr = strtok(buffer, " ");
+            player_index = ptr[0];
+            ptr = strtok(NULL, " ");
+            rand_key = atoi(ptr);
+            ptr = strtok(NULL, " ");
+            int the_card_number = atoi(ptr);
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "%d\n", the_card_number);
+            write(fd[turn], buffer, sizeof(buffer));
+            // get response
+            bzero(buffer, sizeof(buffer));
+            read(fd_from_players, buffer, sizeof(buffer));
+            buffer[strlen(buffer) - 1] = '\0';
+            ptr = strtok(buffer, " ");
+            player_index = ptr[0];
+            ptr = strtok(NULL, " ");
+            rand_key = atoi(ptr);
+            ptr = strtok(NULL, " ");
+            int eliminated = atoi(ptr);
+            if (eliminated)
+                number_of_cards[turn] -= 2;
+            turn = (turn + 1) % 4;
+            next_turn = (turn + 1) % 4;
+        } // while (1)
     } // while (1)
     return EXIT_SUCCESS;
 }
