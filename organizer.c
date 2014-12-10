@@ -18,6 +18,7 @@ typedef struct judge {
     int pipe_to_judge_fd[2];
     int pipe_from_judge_fd[2];
     pid_t pid;
+    int busy;
 } JUDGE;
 
 typedef struct player {
@@ -59,6 +60,8 @@ int main(int argc, char *argv[])
     char buffer[MAX_BUFFER_SIZE];
     JUDGE judges[MAX_JUDGE_NUM];
     PLAYER players[MAX_PLAYER_NUM];
+    for (i = 0; i < player_num; i++)
+        players[i].score = 0;
 
     for (i = 0; i < judge_num; i++) {
         judges[i].judge_id = i + 1;
@@ -113,6 +116,11 @@ int main(int argc, char *argv[])
             sprintf(buffer, "0 0 0 0\n");
             write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
             */
+            /* deduct points for loser */
+            bzero(buffer, sizeof(buffer));
+            read(judges[i].pipe_from_judge_fd[0], buffer, sizeof(buffer));
+            buffer[strlen(buffer) - 1] = '\0';
+            players[atoi(buffer)].score -= 1;
         }
     }
     for (i = 0; i < judge_num; i++) {
@@ -120,6 +128,9 @@ int main(int argc, char *argv[])
         wait(&status);
 //        printf("%d\n", status);
     }
-
+    fprintf(stderr, "- scores -\n");
+    for (i = 0; i < player_num; i++) {
+        fprintf(stderr, "%d %d\n", i, players[i].score);
+    }
     return EXIT_SUCCESS;
 }

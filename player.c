@@ -99,6 +99,13 @@ int main(int argc, char *argv[])
             bzero(buffer, sizeof(buffer));
             sprintf(buffer, "%s %s %d\n", argv[2], argv[3], cards[card_id_been_drawn]);
             write(outfd, buffer, sizeof(buffer));
+            // rearrange the card deck
+            for (i = card_id_been_drawn; i < card_count - 1; i++)
+                cards[i] = cards[i + 1];
+//            for (i = card_count - 1; i < 15; i++)
+//                cards[i] = -1;
+            cards[card_count - 1] = -1;
+            card_count -= 1;
         } else { // get a card from the next
             int the_card_number;
             the_card_number = atoi(buffer);
@@ -136,10 +143,10 @@ int main(int argc, char *argv[])
                 while (cards[i] != -1)
                     i += 1;
                 card_count = i;
-                bzero(buffer, sizeof(buffer));
-                sprintf(buffer, "%s %s %d\n", argv[2], argv[3], eliminated);
-                write(outfd, buffer, sizeof(buffer));
-            } // if (eliminated) {
+            }
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "%s %s %d\n", argv[2], argv[3], eliminated);
+            write(outfd, buffer, sizeof(buffer));
         } // else {
     } // while (1) {
     return EXIT_SUCCESS;
