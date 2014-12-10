@@ -5,11 +5,12 @@
 #include <errno.h>
 #include <sys/wait.h>
 
+#include "include.h"
+
 #define MIN_JUDGE_NUM 1
 #define MAX_JUDGE_NUM 12
 #define MIN_PLAYER_NUM 8
 #define MAX_PLAYER_NUM 16
-#define MAX_BUFFER_SIZE 10000
 
 typedef struct judge {
     int judge_id;
@@ -117,7 +118,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < judge_num; i++) {
         int status;
         wait(&status);
-        printf("%d\n", status);
+//        printf("%d\n", status);
     }
 
     return EXIT_SUCCESS;

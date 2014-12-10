@@ -7,7 +7,8 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-#define MAX_BUFFER_SIZE (1000)
+#include "include.h"
+
 #define TERMINATE "0 0 0 0\n"
 
 enum {
@@ -31,7 +32,6 @@ int main(int argc, char *argv[]) {
     }
 
     int i, j;
-    srand(time(NULL));
 
     /* one game per loop */
     while (1) {
@@ -47,6 +47,7 @@ int main(int argc, char *argv[]) {
         int players[4];
         // trim '\n'
         buffer[strlen(buffer) - 1] = '\0';
+//        fetch_data(buffer, players);
         char *ptr;
         ptr = strtok(buffer, " ");
         players[0] = atoi(ptr);
@@ -60,16 +61,17 @@ int main(int argc, char *argv[]) {
         /* give out cards */
         int cards[52] = {0}, player_cards[4][14];
         // distribute the joker
-        player_cards[A][13] = 52;
+        player_cards[A][13] = 0;
         for (i = 0; i < 4; i++)
             for (j = 0; j < 13; j++) {
                 int the_card;
                 while (cards[the_card = rand() % 52]);
                 // mark this card used
                 cards[the_card] = 1;
-                player_cards[i][j] = the_card;
+                // generalize the_card
+                player_cards[i][j] = the_card % 13 + 1;
             }
-        fprintf(stderr, "judge %d : \n", judge_id);
+//        fprintf(stderr, "judge %d : \n", judge_id);
 
         /* make fifo for player to write to judge*/
         bzero(buffer, sizeof(buffer));
@@ -98,6 +100,7 @@ int main(int argc, char *argv[]) {
                 sprintf(buffer1, "%c", 'A' + i);
                 char buffer2[MAX_BUFFER_SIZE];
                 bzero(buffer2, sizeof(buffer2));
+                srand(time(NULL) + judge_id + i);
                 sprintf(buffer2, "%d", rand() % 65536);
                 // use (char *)0 instead of NULL,
                 // due to the fact that in some system NULL is not equal to 0.
@@ -131,9 +134,56 @@ int main(int argc, char *argv[]) {
             } // else
         } // for (i = 0 to 3)
 
-        int card_counts[4] = {14, 13, 13, 13};
-        while (1) {
+        int card_counts[4];
+        int fd_from_players;
+        bzero(buffer, sizeof(buffer));
+        sprintf(buffer, "judge%d.FIFO", judge_id);
+        fd_from_players = open(buffer, O_RDONLY);
 
+        int random_key[4];
+        int number_of_cards[4];
+        for (i = 0; i < 4; i++) {
+            bzero(buffer, sizeof(buffer));
+            read(fd_from_players, buffer, sizeof(buffer));
+            // trim '\n'
+            buffer[strlen(buffer) - 1] = '\0';
+            ptr = strtok(buffer, " ");
+            // [player_index] [random_key] [number_of_cards]
+            char player_index = ptr[0];
+            ptr = strtok(NULL, " ");
+            random_key[player_index - 'A'] = atoi(ptr);
+            ptr = strtok(NULL, " ");
+            number_of_cards[player_index - 'A'] = atoi(ptr);
+        }
+        fprintf(stderr, "%d %d %d %d\n", number_of_cards[0], number_of_cards[1], number_of_cards[2], number_of_cards[3]);
+
+        /* the game starts */
+        int turn = A;
+        int next_turn = (A + 1 ) % 4;
+        while (1) {
+            // stop the game when only one player have cards
+            int flag = 0;
+            for (i = 0; i < 4; i++)
+                if (number_of_cards[i] == 0)
+                    flag += 1;
+            if (flag == 3)
+                break;
+            // send the card_count of next to now
+            bzero(buffer, sizeof(buffer));
+            sprintf(buffer, "< %d\n", number_of_cards[next_turn]);
+            write(fd[turn], buffer, sizeof(buffer));
+            // get the card_id from now player
+            bzero(buffer, sizeof(buffer));
+            // [player_index] [random_key] [card_ID]
+            read(fd_from_players, buffer, sizeof(buffer));
+            ptr = strtok(buffer, " ");
+            char player_index = ptr[0];
+            ptr = strtok(NULL, " ");
+            int rand_key = atoi(ptr);
+            ptr = strtok(NULL, " ");
+            int card_id = atoi(ptr);
+            if (rand_key != random_key[player_index - 'A'])
+                fprintf(stderr, "someone is cheating!\n");
         }
     } // while (1)
     return EXIT_SUCCESS;
