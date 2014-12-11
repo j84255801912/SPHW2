@@ -32,8 +32,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    srand(time(NULL)*judge_id*judge_id);
-
+    srand(time(NULL) ^ (getpid() << 16));
     int i, j;
 
     /* one game per loop */
@@ -90,7 +89,7 @@ int main(int argc, char *argv[]) {
             sprintf(fifoname, "judge%d_%c.FIFO", judge_id, 'A' + i);
             mkfifo(fifoname, 0644);
 
-            srand(time(NULL)*judge_id*judge_id*(i+1)*(i+2)*(i+3)*(i+4));
+        //    srand(time(NULL));
             // fork
             pid_t cpid = fork();
             if (cpid < 0) {
@@ -104,6 +103,7 @@ int main(int argc, char *argv[]) {
                 sprintf(buffer1, "%c", 'A' + i);
                 char buffer2[MAX_BUFFER_SIZE];
                 bzero(buffer2, sizeof(buffer2));
+                srand(time(NULL) ^ (getpid() << 16));
                 sprintf(buffer2, "%d", rand() % 65536);
                 // use (char *)0 instead of NULL,
                 // due to the fact that in some system NULL is not equal to 0.

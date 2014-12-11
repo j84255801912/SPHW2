@@ -192,10 +192,10 @@ int main(int argc, char *argv[])
     qsort(&players, player_num, sizeof(PLAYER), compare);
 
     /* scoreboard */
-    fprintf(stderr, "\n[RESULT] : %d competition completed\n", counting);
-    fprintf(stderr, "\n- scores -\n");
-    for (i = 0; i < player_num; i++) {
-        fprintf(stderr, "%d %d\n", players[i].id, players[i].score);
-    }
+    fprintf(stdout, "\n[RESULT] : %d competition completed\n", counting);
+    fprintf(stdout, "\n- loser rank (from loser to winner) -\n");
+    for (i = 0; i < player_num; i++)
+        fprintf(stdout, "%d ", players[i].id);
+    fprintf(stdout, "\n");
     return EXIT_SUCCESS;
 }

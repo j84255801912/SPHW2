@@ -1,10 +1,10 @@
 #include <sys/types.h>
 
-#define MAX_BUFFER_SIZE (100)
-#define MIN_JUDGE_NUM 1
-#define MAX_JUDGE_NUM 12
-#define MIN_PLAYER_NUM 8
-#define MAX_PLAYER_NUM 16
+#define MAX_BUFFER_SIZE (500)
+#define MIN_JUDGE_NUM (1)
+#define MAX_JUDGE_NUM (12)
+#define MIN_PLAYER_NUM (8)
+#define MAX_PLAYER_NUM (16)
 
 typedef struct judge {
     int judge_id;
@@ -21,4 +21,3 @@ typedef struct player {
 } PLAYER;
 
 extern int compare(const void *a, const void *b);
-extern int fetch_data(char *str, int *a);
