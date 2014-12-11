@@ -41,7 +41,6 @@ int main(int argc, char *argv[]) {
         /* read player num */
         bzero(buffer, sizeof(buffer));
         read(STDIN_FILENO, buffer, sizeof(buffer));
-        fprintf(stderr, "In judge\n");
 
         /* TERMINATE when 0 0 0 0\n */
         if (strcmp(TERMINATE, buffer) == 0)
@@ -295,7 +294,6 @@ int main(int argc, char *argv[]) {
 
         /* kill players */
         for (i = 0; i < 4; i++) {
-            fprintf(stderr, "killing player %d\n", i);
             kill(pids[i], SIGKILL);
             int status;
             wait(&status);

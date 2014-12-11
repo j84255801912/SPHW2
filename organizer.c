@@ -4,27 +4,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <sys/types.h>
 
 #include "include.h"
-
-#define MIN_JUDGE_NUM 1
-#define MAX_JUDGE_NUM 12
-#define MIN_PLAYER_NUM 8
-#define MAX_PLAYER_NUM 16
-
-typedef struct judge {
-    int judge_id;
-    // 0 for read, 1 for write
-    int pipe_to_judge_fd[2];
-    int pipe_from_judge_fd[2];
-    pid_t pid;
-    int busy;
-} JUDGE;
-
-typedef struct player {
-    int id;
-    int score;
-} PLAYER;
 
 int main(int argc, char *argv[])
 {
@@ -119,56 +101,101 @@ int main(int argc, char *argv[])
         }
     } // for (i = 0; i < judge_num; i++)
 
+    fd_set the_set, temp_set;
+    FD_ZERO(&the_set);
+    int max_fd = 0;
+    for (i = 0; i < judge_num; i++) {
+        // add the fd to the fdset
+        FD_SET(judges[i].pipe_from_judge_fd[0], &the_set);
+        /* handle pipe_from_judge_fd[0] */
+        if (judges[i].pipe_from_judge_fd[0] > max_fd)
+            max_fd = judges[i].pipe_from_judge_fd[0];
+    }
+
     int counting = 0;
+
     /* distribute all possible competitions to idle judges */
     for (a = player_num - 1; a >= 0; a--) {
         for (b = player_num - 1; b > a; b--) {
             for (c = player_num - 1; c > b; c--) {
                 for (d = player_num - 1; d > c; d--) {
-                    /* find an idle judge */
-                    i = 0;
-                    /*
-                    while (judges[i].busy) {
-                        i = (i + 1) % judge_num;
-                        fprintf(stderr, "fuck");
-                    }
-                    */
-                    judges[i].busy = 1;
-                    fprintf(stderr, "%dth competition start, judge %d is busy now\n", counting, i+1);
                     counting += 1;
-                    /* the judge[i] is assigned by these players */
-                    // write
-                    bzero(buffer, sizeof(buffer));
-                    sprintf(buffer, "%d %d %d %d\n", a, b, c, d);
-                    write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
-
-                    /* deduct points for loser */
-                    bzero(buffer, sizeof(buffer));
-                    fprintf(stderr, "before read\n");
-                    read(judges[i].pipe_from_judge_fd[0], buffer, sizeof(buffer));
-                    fprintf(stderr, "after read\n");
-                    buffer[strlen(buffer) - 1] = '\0';
-                    players[atoi(buffer)].score -= 1;
-                    // change the judge's state to idle
-                    judges[i].busy = 0;
+                    /* find an idle judge */
+                    int flag = 0;
+                    for (i = 0; i < judge_num; i++)
+                        if (judges[i].busy == 0) {
+                            flag = 1;
+                            break;
+                        }
+                    // case 1: if someone is available
+                    if (flag) {
+                        fprintf(stderr, "judge %d : %dth game is starting.\n", i + 1, counting + 1);
+                        /* the judge[i] is assigned by these players */
+                        // write players id to judges
+                        bzero(buffer, sizeof(buffer));
+                        sprintf(buffer, "%d %d %d %d\n", a, b, c, d);
+                        write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+                        judges[i].busy = 1;
+                    } else {
+                    // case 2: no one is available,
+                    // wait for someone and write to him.
+                        /* if there is anything to read from judge, handle them */
+                        int result;
+                        memcpy(&temp_set, &the_set, sizeof(temp_set));
+                        result = select(max_fd + 1, &temp_set, NULL, NULL, NULL);
+                        if (result > 0) { // success
+                            for (i = 0; i < judge_num; i++) {
+                                if (FD_ISSET(judges[i].pipe_from_judge_fd[0], &temp_set)) {
+                                    /* deduct points for loser */
+                                    bzero(buffer, sizeof(buffer));
+                                    read(judges[i].pipe_from_judge_fd[0], buffer, sizeof(buffer));
+                                    buffer[strlen(buffer) - 1] = '\0';
+                                    players[atoi(buffer)].score -= 1;
+                                    // change the judge's state to idle
+                                    judges[i].busy = 0;
+                                } // if (FD_ISSET
+                            } // for (i = 0; i < judge
+                        } // if (result > 0)
+                        // when run to here, must be someone is available.
+                        for (i = 0; i < judge_num; i++)
+                            if (judges[i].busy == 0) {
+                                flag = 1;
+                                break;
+                            }
+                        fprintf(stderr, "%dth competition start, judge %d is busy now\n", counting, i+1);
+                        /* the judge[i] is assigned by these players */
+                        // write players id to judges
+                        bzero(buffer, sizeof(buffer));
+                        sprintf(buffer, "%d %d %d %d\n", a, b, c, d);
+                        write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+                        judges[i].busy = 1;
+                    }
                 } // for d
             } // for c
         } // for b
     } // for a
+    /* tell judges to stop and close their pipes*/
     for (i = 0; i < judge_num; i++) {
         bzero(buffer, sizeof(buffer));
         sprintf(buffer, "0 0 0 0\n");
         write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+    //    close(judges[i].pipe_to_judge_fd[1]);
+    //    close(judges[i].pipe_from_judge_fd[0]);
     }
+    /* wait for childs, in case of zombies */
     for (i = 0; i < judge_num; i++) {
         int status;
         wait(&status);
-//        printf("%d\n", status);
     }
+
+    // sort players by score and id
+    qsort(&players, player_num, sizeof(PLAYER), compare);
+
+    /* scoreboard */
     fprintf(stderr, "\n[RESULT] : %d competition completed\n", counting);
     fprintf(stderr, "\n- scores -\n");
     for (i = 0; i < player_num; i++) {
-        fprintf(stderr, "%d %d\n", i, players[i].score);
+        fprintf(stderr, "%d %d\n", players[i].id, players[i].score);
     }
     return EXIT_SUCCESS;
 }
