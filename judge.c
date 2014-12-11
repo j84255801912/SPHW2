@@ -132,8 +132,8 @@ int main(int argc, char *argv[]) {
 
                 fd[i] = open(fifoname, O_WRONLY);
                 if (fd[i] == -1) {
-                    perror("open");
-                    exit(EXIT_SUCCESS);
+                    perror("open judge[n]_n.fifo, judge");
+                    exit(EXIT_FAILURE);
                 }
                 write(fd[i], buffer, sizeof(buffer));
             } // else
@@ -143,6 +143,10 @@ int main(int argc, char *argv[]) {
         bzero(buffer, sizeof(buffer));
         sprintf(buffer, "judge%d.FIFO", judge_id);
         fd_from_players = open(buffer, O_RDONLY);
+        if (fd_from_players == -1) {
+            perror("open judge[n].FIFO, judge");
+            exit(EXIT_FAILURE);
+        }
 
         int random_key[4];
         int number_of_cards[4];
@@ -279,10 +283,14 @@ int main(int argc, char *argv[]) {
         bzero(buffer, sizeof(buffer));
         sprintf(buffer, "judge%d.FIFO", judge_id);
         unlink(buffer);
+        close(fd_from_players);
+
         for (i = 0; i < 4; i++) {
             bzero(buffer, sizeof(buffer));
             sprintf(buffer, "judge%d_%c.FIFO", judge_id, 'A' + i);
             unlink(buffer);
+            // close fifo
+            close(fd[i]);
         }
 
         /* kill players */
