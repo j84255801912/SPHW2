@@ -40,11 +40,13 @@ int main(int argc, char *argv[]) {
     while (1) {
         /* read player num */
         bzero(buffer, sizeof(buffer));
-        read(STDIN_FILENO, buffer, sizeof(buffer) - 1);
+        read(STDIN_FILENO, buffer, sizeof(buffer));
+        fprintf(stderr, "In judge\n");
 
         /* TERMINATE when 0 0 0 0\n */
         if (strcmp(TERMINATE, buffer) == 0)
             break;
+
         /* fetch player_id */
         int players[4];
         // trim '\n'
@@ -158,7 +160,6 @@ int main(int argc, char *argv[]) {
             number_of_cards[player_index - 'A'] = atoi(ptr);
         }
 //        fprintf(stderr, "%d %d %d %d\n", number_of_cards[0], number_of_cards[1], number_of_cards[2], number_of_cards[3]);
-
         /* the game starts */
         int turn = A;
         int next_turn = (A + 1) % 4;
@@ -285,8 +286,12 @@ int main(int argc, char *argv[]) {
         }
 
         /* kill players */
-        for (i = 0; i < 4; i++)
+        for (i = 0; i < 4; i++) {
+            fprintf(stderr, "killing player %d\n", i);
             kill(pids[i], SIGKILL);
+            int status;
+            wait(&status);
+        }
     } // while (1)
     return EXIT_SUCCESS;
 }

@@ -22,6 +22,7 @@ typedef struct judge {
 } JUDGE;
 
 typedef struct player {
+    int id;
     int score;
 } PLAYER;
 
@@ -29,7 +30,7 @@ int main(int argc, char *argv[])
 {
     // ./organizer judge_num player_num
     if (argc != 3) {
-        fprintf(stderr, "Wrong format\n");
+        fprintf(stderr, "Wrong argument format\n");
         exit(EXIT_FAILURE);
     }
 
@@ -56,13 +57,21 @@ int main(int argc, char *argv[])
     }
 
     // initiate judges processes and pipes
-    int i, j;
+    int i, j, a, b, c, d;
     char buffer[MAX_BUFFER_SIZE];
-    JUDGE judges[MAX_JUDGE_NUM];
-    PLAYER players[MAX_PLAYER_NUM];
-    for (i = 0; i < player_num; i++)
-        players[i].score = 0;
 
+    // init players
+    PLAYER players[MAX_PLAYER_NUM];
+    for (i = 0; i < player_num; i++) {
+        players[i].id = i;
+        players[i].score = 0;
+    }
+    // init judges
+    JUDGE judges[MAX_JUDGE_NUM];
+    for (i = 0; i < judge_num; i++)
+        judges[i].busy = 0;
+
+    /* */
     for (i = 0; i < judge_num; i++) {
         judges[i].judge_id = i + 1;
         // create two-direction pipe first.
@@ -95,7 +104,7 @@ int main(int argc, char *argv[])
 
             /* call judge */
             bzero(buffer, sizeof(buffer));
-            sprintf(buffer, "%d", i + 1);
+            sprintf(buffer, "%d", judges[i].judge_id);
             // use (char *)0 instead of NULL,
             // due to the fact that in some system NULL is not equal to 0.
             execl("./judge", "./judge", buffer, (char *)0);
@@ -107,28 +116,57 @@ int main(int argc, char *argv[])
             judges[i].pid = cpid;
             // close read end cuz dont need it.
             close(judges[i].pipe_to_judge_fd[0]);
-            // write
-            bzero(buffer, sizeof(buffer));
-            sprintf(buffer, "%d %d %d %d\n", i*4, i*4 + 1, i*4 + 2, i*4 + 3);
-            write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
-            /*
-            bzero(buffer, sizeof(buffer));
-            sprintf(buffer, "0 0 0 0\n");
-            write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
-            */
-            /* deduct points for loser */
-            bzero(buffer, sizeof(buffer));
-            read(judges[i].pipe_from_judge_fd[0], buffer, sizeof(buffer));
-            buffer[strlen(buffer) - 1] = '\0';
-            players[atoi(buffer)].score -= 1;
         }
+    } // for (i = 0; i < judge_num; i++)
+
+    int counting = 0;
+    /* distribute all possible competitions to idle judges */
+    for (a = player_num - 1; a >= 0; a--) {
+        for (b = player_num - 1; b > a; b--) {
+            for (c = player_num - 1; c > b; c--) {
+                for (d = player_num - 1; d > c; d--) {
+                    /* find an idle judge */
+                    i = 0;
+                    /*
+                    while (judges[i].busy) {
+                        i = (i + 1) % judge_num;
+                        fprintf(stderr, "fuck");
+                    }
+                    */
+                    judges[i].busy = 1;
+                    fprintf(stderr, "%dth competition start, judge %d is busy now\n", counting, i+1);
+                    counting += 1;
+                    /* the judge[i] is assigned by these players */
+                    // write
+                    bzero(buffer, sizeof(buffer));
+                    sprintf(buffer, "%d %d %d %d\n", a, b, c, d);
+                    write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
+
+                    /* deduct points for loser */
+                    bzero(buffer, sizeof(buffer));
+                    fprintf(stderr, "before read\n");
+                    read(judges[i].pipe_from_judge_fd[0], buffer, sizeof(buffer));
+                    fprintf(stderr, "after read\n");
+                    buffer[strlen(buffer) - 1] = '\0';
+                    players[atoi(buffer)].score -= 1;
+                    // change the judge's state to idle
+                    judges[i].busy = 0;
+                } // for d
+            } // for c
+        } // for b
+    } // for a
+    for (i = 0; i < judge_num; i++) {
+        bzero(buffer, sizeof(buffer));
+        sprintf(buffer, "0 0 0 0\n");
+        write(judges[i].pipe_to_judge_fd[1], buffer, sizeof(buffer));
     }
     for (i = 0; i < judge_num; i++) {
         int status;
         wait(&status);
 //        printf("%d\n", status);
     }
-    fprintf(stderr, "- scores -\n");
+    fprintf(stderr, "\n[RESULT] : %d competition completed\n", counting);
+    fprintf(stderr, "\n- scores -\n");
     for (i = 0; i < player_num; i++) {
         fprintf(stderr, "%d %d\n", i, players[i].score);
     }

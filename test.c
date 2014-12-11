@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <gsl/gsl_combination.h>
 
 #define MAX_BUFFER_SIZE (1000)
 

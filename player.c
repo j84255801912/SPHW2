@@ -11,11 +11,10 @@ int main(int argc, char *argv[])
 {
     char buffer[MAX_BUFFER_SIZE];
     bzero(buffer, sizeof(buffer));
-//    fprintf(stderr, "player : [from %s] %s %s\n", argv[1], argv[2], argv[3]);
     sprintf(buffer, "judge%s_%s.FIFO", argv[1], argv[2]);
     int infd = open(buffer, O_RDONLY);
     if (infd == -1) {
-        perror("open fifo");
+        perror("open infd, player");
         exit(EXIT_FAILURE);
     }
     /* get cards from judge */
@@ -70,12 +69,16 @@ int main(int argc, char *argv[])
     bzero(buffer, sizeof(buffer));
     sprintf(buffer, "judge%s.FIFO", argv[1]);
     int outfd = open(buffer, O_WRONLY);
+    if (outfd == -1) {
+        perror("open outfd, player");
+        exit(EXIT_FAILURE);
+    }
 
     /* write card_count to judge */
     bzero(buffer, sizeof(buffer));
     // [player_index] [random_key] [number_of_cards]
     sprintf(buffer, "%s %s %d\n", argv[2], argv[3], card_count);
-    fprintf(stderr, "%s", buffer);
+//    fprintf(stderr, "%s", buffer);
     write(outfd, buffer, sizeof(buffer));
 
     /* the game starts */
